@@ -20,6 +20,13 @@ export function createTray({ iconPath, balloonIconPath, getSettings, actions }) 
         { type: 'separator' },
         { label: 'Settings…', click: actions.settings },
         {
+          label: 'Mascot mode',
+          type: 'checkbox',
+          checked: s.mode === 'mascot',
+          click: (item) => actions.setMascotMode(item.checked),
+        },
+        { label: 'Reset positions', click: actions.resetPositions },
+        {
           label: 'Start on login',
           type: 'checkbox',
           checked: s.startOnLogin,

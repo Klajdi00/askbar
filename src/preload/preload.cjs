@@ -16,9 +16,10 @@ contextBridge.exposeInMainWorld('askbar', {
   onChunk: (callback) => subscribe('ai:chunk', callback),
   onMeta: (callback) => subscribe('ai:meta', callback),
 
-  // Screen
-  captureScreen: () => ipcRenderer.invoke('screen:capture'),
+  // Screen (capture happens only when the user asks: button or hotkey)
+  lookAtScreen: () => ipcRenderer.send('screen:look'),
   onScreenshot: (callback) => subscribe('screen:attached', callback),
+  onScreenError: (callback) => subscribe('screen:error', callback),
 
   // Settings
   getState: () => ipcRenderer.invoke('settings:get'),
@@ -26,8 +27,11 @@ contextBridge.exposeInMainWorld('askbar', {
 
   // Window
   onShown: (callback) => subscribe('overlay:shown', callback),
+  onLayout: (callback) => subscribe('overlay:layout', callback),
   resize: (height) => ipcRenderer.send('overlay:resize', height),
   hide: () => ipcRenderer.send('overlay:hide'),
+  dragStart: (offsetX, offsetY) => ipcRenderer.send('overlay:drag-start', { offsetX, offsetY }),
+  dragEnd: () => ipcRenderer.send('overlay:drag-end'),
 
   // Misc
   copy: (text) => ipcRenderer.send('clipboard:write', text),

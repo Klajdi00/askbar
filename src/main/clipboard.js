@@ -19,6 +19,7 @@ export async function rewriteClipboard({ settings, apiKey, notify, onMissingKey,
   if (!apiKey) return onMissingKey();
 
   busy = true;
+  let succeeded = false;
   setBusy?.(true);
   try {
     const { text, truncated } = await runTransform({
@@ -34,6 +35,7 @@ export async function rewriteClipboard({ settings, apiKey, notify, onMissingKey,
       return notify('Clipboard changed', 'You copied something else in the meantime, so the result was not pasted in.');
     }
     clipboard.writeText(text);
+    succeeded = true;
     notify(
       'Rewritten text copied',
       truncated ? 'The result hit the length limit and may be cut off. Press Ctrl+V to paste.' : 'Press Ctrl+V to paste.'
@@ -42,6 +44,6 @@ export async function rewriteClipboard({ settings, apiKey, notify, onMissingKey,
     notify('Rewrite failed', err.message);
   } finally {
     busy = false;
-    setBusy?.(false);
+    setBusy?.(false, succeeded);
   }
 }

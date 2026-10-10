@@ -17,10 +17,12 @@
     shotLabel: $('shot-label'),
     shotRemove: $('shot-remove'),
     shotWarning: $('shot-warning'),
+    screenHint: $('screen-hint'),
     chat: $('chat'),
     settings: $('settings'),
     footer: $('footer'),
     status: $('status'),
+    setMode: $('set-mode'),
     setProvider: $('set-provider'),
     setModel: $('set-model'),
     modelList: $('model-list'),
@@ -223,8 +225,8 @@
     welcome = div('welcome');
     welcome.id = 'welcome';
     welcome.innerHTML =
-      '<p><strong>Welcome to AskBar.</strong> Add an API key for Claude, OpenAI or Gemini to start asking. ' +
-      'The key stays on this PC.</p>';
+      '<p><strong>Welcome to AskBar.</strong> Add a Claude, OpenAI or Gemini API key to start. ' +
+      'It stays on this PC.</p>';
     welcome.append(button('Open settings', 'ghost', () => openSettings()));
     el.chat.prepend(welcome);
   }
@@ -240,6 +242,8 @@
     el.prompt.placeholder = state.pendingImage
       ? 'Ask about this screenshot, or press Enter'
       : `Ask ${provider.shortLabel} anything…`;
+    el.btnScreen.title = `Look at screen (${pretty(s.hotkeys.screen) || 'no shortcut'}): attach a screenshot to your next question`;
+    updateScreenHint();
 
     const img = state.pendingImage;
     el.attachment.hidden = !(chatView && img);
@@ -261,6 +265,26 @@
     if (s.redact) el.status.append(span('Redact on', 'pill'));
   }
 
+  /**
+   * One-line hint when the typed question is about the screen but nothing is
+   * attached. Only a hint: capturing always needs the button or the hotkey.
+   */
+  function updateScreenHint() {
+    const s = state.app?.settings;
+    const show =
+      Boolean(s) &&
+      state.view === 'chat' &&
+      !state.pendingImage &&
+      window.looksLikeScreenQuestion(el.prompt.value);
+    el.screenHint.hidden = !show;
+    if (show) {
+      const key = pretty(s.hotkeys.screen);
+      el.screenHint.textContent = key
+        ? `Press the screen button or ${key} so I can see it.`
+        : 'Press the screen button so I can see it.';
+    }
+  }
+
   // -------------------------------------------------------------- settings
 
   function openSettings(notice) {
@@ -268,6 +292,7 @@
     state.view = 'settings';
     state.draft = { provider: s.provider, models: { ...s.models }, keys: {}, hotkeys: { ...s.hotkeys } };
 
+    el.setMode.value = s.mode;
     el.setProvider.replaceChildren(...Object.values(state.app.providers).map((p) => new Option(p.label, p.id)));
     el.setProvider.value = s.provider;
     fillProviderFields();
@@ -325,6 +350,7 @@
     const d = state.draft;
     const keys = Object.fromEntries(Object.entries(d.keys).filter(([, v]) => v === null || (v && v.trim())));
     const res = await api.saveSettings({
+      mode: el.setMode.value,
       provider: d.provider,
       models: d.models,
       keys,
@@ -469,6 +495,49 @@
     el.prompt.style.height = `${Math.min(el.prompt.scrollHeight, 160)}px`;
   }
 
+  /**
+   * Moving the bar: press the left button on the badge, the bar's empty edges
+   * or the footer and move. The main process then makes the window follow the
+   * mouse until the button is released.
+   */
+  function enableDragging() {
+    const DRAG_THRESHOLD = 4;
+    let press = null;
+    let dragging = false;
+
+    const isHandle = (target) =>
+      Boolean(target.closest('#bar, #footer')) && !target.closest('textarea, input, select, button, a');
+
+    const finish = () => {
+      if (dragging) {
+        api.dragEnd();
+        if (state.view === 'chat') el.prompt.focus();
+      }
+      press = null;
+      dragging = false;
+      document.body.classList.remove('dragging');
+    };
+
+    el.card.addEventListener('pointerdown', (e) => {
+      if (e.button !== 0 || !isHandle(e.target)) return;
+      e.preventDefault(); // keep focus in the input
+      press = { x: e.screenX, y: e.screenY, offsetX: e.clientX, offsetY: e.clientY };
+      el.card.setPointerCapture(e.pointerId);
+    });
+
+    el.card.addEventListener('pointermove', (e) => {
+      if (!press || dragging) return;
+      if (Math.hypot(e.screenX - press.x, e.screenY - press.y) > DRAG_THRESHOLD) {
+        dragging = true;
+        document.body.classList.add('dragging');
+        api.dragStart(press.offsetX, press.offsetY);
+      }
+    });
+
+    el.card.addEventListener('pointerup', finish);
+    el.card.addEventListener('lostpointercapture', finish);
+  }
+
   /** Tells the main process how tall the window must be to fit the card. */
   function observeSize() {
     const report = () => {
@@ -483,7 +552,10 @@
   // ---------------------------------------------------------------- events
 
   function bindEvents() {
-    el.prompt.addEventListener('input', autoGrow);
+    el.prompt.addEventListener('input', () => {
+      autoGrow();
+      updateScreenHint();
+    });
     el.prompt.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
         e.preventDefault();
@@ -524,12 +596,8 @@
 
     el.btnSettings.addEventListener('click', () => (state.view === 'settings' ? closeSettings() : openSettings()));
 
-    el.btnScreen.addEventListener('click', async () => {
-      const res = await api.captureScreen();
-      if (res.ok) attachImage(res.image);
-      else showLocalError('Screenshot', res.error);
-      el.prompt.focus();
-    });
+    // Same as the hotkey: the main process captures and sends 'screen:attached'.
+    el.btnScreen.addEventListener('click', () => api.lookAtScreen());
 
     el.shotRemove.addEventListener('click', () => {
       state.pendingImage = null;
@@ -581,13 +649,22 @@
       scheduleRender(t);
     });
 
-    // Window shown (hotkey, tray, second launch)
-    api.onShown(({ maxHeight, view, notice } = {}) => {
+    // Where the window is decides how tall it may grow and in which direction.
+    const applyLayout = ({ maxHeight, growUp }) => {
+      document.body.classList.toggle('grow-up', Boolean(growUp));
       if (maxHeight) {
         const body = getComputedStyle(document.body);
         const padding = parseFloat(body.paddingTop) + parseFloat(body.paddingBottom);
         document.documentElement.style.setProperty('--max-card', `${Math.floor(maxHeight - padding)}px`);
       }
+    };
+
+    // The user dragged the bar to a new spot.
+    api.onLayout(applyLayout);
+
+    // Window shown (hotkey, tray, mascot, second launch)
+    api.onShown(({ maxHeight, view, notice, growUp } = {}) => {
+      applyLayout({ maxHeight, growUp });
       if (!state.streaming && state.turns.length && Date.now() - state.lastActivity > IDLE_RESET_MS) newChat();
 
       if (view === 'settings') {
@@ -605,17 +682,18 @@
       });
     });
 
-    // Screenshot from the hotkey or the tray menu
-    api.onScreenshot(({ image, autoSend }) => {
+    // Screenshot from the hotkey, the eye buttons or a menu: attach it to the next question.
+    api.onScreenshot(({ image }) => {
       attachImage(image);
-      if (autoSend && el.prompt.value.trim()) send();
-      else el.prompt.focus();
+      el.prompt.focus();
     });
+    api.onScreenError((message) => showLocalError('Screenshot', message));
   }
 
   async function init() {
     state.app = await api.getState();
     bindEvents();
+    enableDragging();
     updateChrome();
     observeSize();
     el.prompt.focus();

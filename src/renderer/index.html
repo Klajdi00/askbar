@@ -13,13 +13,13 @@
   <body>
     <main id="card">
       <div id="bar">
-        <span class="badge" title="AI assistant">
+        <span class="badge" title="AI assistant. Hold here and drag to move the bar.">
           <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.5c.3 2.9 1.6 4.2 4.5 4.5-2.9.3-4.2 1.6-4.5 4.5C7.7 7.6 6.4 6.3 3.5 6 6.4 5.7 7.7 4.4 8 1.5Zm4.2 8.3c.15 1.3.75 1.9 2.05 2.05-1.3.15-1.9.75-2.05 2.05-.15-1.3-.75-1.9-2.05-2.05 1.3-.15 1.9-.75 2.05-2.05Z"/></svg>
           <span>AI</span>
         </span>
         <textarea id="prompt" rows="1" placeholder="Ask anything…" spellcheck="false" autocomplete="off" aria-label="Ask the AI"></textarea>
-        <button id="btn-screen" class="icon" type="button" title="Attach a screenshot of this screen">
-          <svg viewBox="0 0 20 20" aria-hidden="true"><rect x="2.5" y="3.5" width="15" height="10" rx="1.5"/><path d="M7 16.5h6M10 13.5v3"/></svg>
+        <button id="btn-screen" class="icon" type="button" title="Look at screen: attach a screenshot to your next question">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M1.8 10s3-5.5 8.2-5.5S18.2 10 18.2 10s-3 5.5-8.2 5.5S1.8 10 1.8 10Z"/><circle cx="10" cy="10" r="2.6"/></svg>
         </button>
         <button id="btn-settings" class="icon" type="button" title="Settings (Ctrl+,)">
           <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="2.6"/><path d="M10 2.5v2.2M10 15.3v2.2M2.5 10h2.2M15.3 10h2.2M4.7 4.7l1.55 1.55M13.75 13.75l1.55 1.55M4.7 15.3l1.55-1.55M13.75 6.25l1.55-1.55"/></svg>
@@ -32,8 +32,10 @@
           <span id="shot-label">Screenshot attached</span>
           <button id="shot-remove" class="chip-x" type="button" title="Remove screenshot">✕</button>
         </div>
-        <span id="shot-warning" class="hint" hidden>Redact mode covers text only. The screenshot is sent as is.</span>
+        <span id="shot-warning" class="hint" hidden>Redact covers text only.</span>
       </div>
+
+      <div id="screen-hint" class="hint-row" hidden></div>
 
       <section id="chat" hidden></section>
 
@@ -43,6 +45,14 @@
           <span id="app-version" class="hint"></span>
         </div>
         <div id="settings-notice" class="notice" hidden></div>
+
+        <label class="field">
+          <span class="label">Mode</span>
+          <select id="set-mode">
+            <option value="bar">Bar only</option>
+            <option value="mascot">Mascot: a small helper you click to ask</option>
+          </select>
+        </label>
 
         <div class="grid">
           <label class="field">
@@ -101,11 +111,12 @@
 
       <footer id="footer" hidden>
         <span id="status"></span>
-        <span class="keys"><kbd>Enter</kbd> send <kbd>Ctrl+N</kbd> new chat <kbd>Esc</kbd> close</span>
+        <span class="keys"><kbd>Ctrl+N</kbd> new <kbd>Esc</kbd> close</span>
       </footer>
     </main>
 
     <script src="markdown.js"></script>
+    <script src="screen-hint.js"></script>
     <script src="renderer.js"></script>
   </body>
 </html>

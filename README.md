@@ -1,11 +1,12 @@
 # AskBar
 
 A Spotlight-style AI launcher for Windows. Press **Ctrl+Space**, type a question, and the answer
-streams in below the bar. Works with **Claude**, **OpenAI** or **Gemini** using your own API key.
-It can also look at your screen when you ask it to, and rewrite text you copied.
+streams in below a compact bar. Works with **Claude**, **OpenAI** or **Gemini** using your own API
+key. It can also look at your screen when you ask it to, and rewrite text you copied. If you like,
+a small mascot can sit in a corner of your screen: click it to ask.
 
-AskBar is openly an AI assistant. The bar carries an "AI" badge, and it is a normal window: it
-shows up in screen shares and recordings like any other app.
+AskBar is openly an AI assistant. The bar carries an "AI" badge, and both the bar and the mascot
+are normal windows: they show up in screen shares and recordings like any other app.
 
 - No account, no backend. Your API key stays on your PC.
 - No telemetry, no analytics, no update checks. The only network traffic is your request to the
@@ -97,7 +98,7 @@ Global (work from any app; change them in Settings):
 | Default | Action |
 |---|---|
 | **Ctrl+Space** | Open / close the launcher |
-| **Ctrl+Shift+S** | Ask about the screen (captures the display under the mouse) |
+| **Ctrl+Shift+S** | Look at screen: capture the display under the mouse and attach it to your next question |
 | **Ctrl+Shift+J** | Rewrite the text on the clipboard, then paste it with Ctrl+V |
 
 Inside the launcher:
@@ -115,32 +116,70 @@ Clicking outside the launcher closes it too (you can turn that off in Settings).
 is still streaming keeps going while the bar is hidden; reopen it to read it. After 5 minutes of
 inactivity, reopening starts a fresh chat.
 
-The tray icon has the same actions, plus **Start on login** and **Quit**.
+The tray icon has the same actions, plus **Mascot mode**, **Reset positions**, **Start on login**
+and **Quit**.
 
 ## Features
 
 ### Chat
 
-Answers stream in and are rendered as simple Markdown: paragraphs, lists, code blocks with a copy
-button, tables and links. Links open in your default browser. Follow-up questions keep the
-context of the current chat; up to the last 20 messages are sent.
+The bar is compact (440 px wide). Answers stream in below it and are rendered as simple Markdown:
+paragraphs, lists, code blocks with a copy button, tables and links. The answer area shows about
+four lines and then scrolls, following the answer as it streams. Links open in your default
+browser. Follow-up questions keep the context of the current chat; up to the last 20 messages are
+sent.
 
-### Ask about the screen
+### Look at the screen
 
-Press **Ctrl+Shift+S** (or click the monitor icon in the bar). AskBar:
+Press **Ctrl+Shift+S**, or click the **eye** button on the bar or on the mascot. All three do
+exactly the same thing. AskBar:
 
-1. makes its own window transparent for a moment so it is not in the picture,
+1. makes its own windows (bar and mascot) transparent for a moment so they are not in the picture,
 2. captures the display under your mouse,
 3. downscales it to at most 1600 px wide, as a JPEG at quality 70, **in memory**,
-4. shows it as a chip under the bar, with a thumbnail and its size, so you can see exactly what
-   will be sent (✕ removes it).
+4. attaches it to your next question, shown as a chip with a thumbnail and its size so you can see
+   exactly what will be sent (✕ removes it).
 
 Type your question and press Enter. If you press Enter without typing anything, AskBar asks the
-model to explain what's on screen and suggest a next step. If the bar was already open with a
-question typed when you pressed the hotkey, it sends straight away.
+model to explain what's on screen and suggest a next step.
+
+Capture only ever happens when you press the hotkey or an eye button. If you type a question that
+is about the screen ("what am I looking at", "see my screen", also in French and Albanian) and no
+screenshot is attached, a one-line hint appears: *"Press the screen button or Ctrl+Shift+S so I
+can see it."* It never captures by itself.
 
 The screenshot stays attached to that question, so follow-ups can refer to it. Only the most
 recent screenshot is re-sent with follow-ups.
+
+### Mascot mode (optional)
+
+Off by default. Turn it on in **Settings → Mode → Mascot**, or with **Mascot mode** in the tray
+menu. **Mochi**, a round ginger kitten (about 96 px), then sits on top of your other windows:
+
+- **Click** it (or press **Ctrl+Space**) to open the compact bar right next to it. Click it again
+  to close the bar. In the lower half of the screen, the bar opens upwards so the input stays next
+  to the mascot.
+- **Hold the left button and drag** it anywhere; it stays exactly where you drop it (only pulled
+  back if part of it would be off screen). The spot is remembered across restarts; if that spot is
+  no longer on a screen (monitor unplugged), it goes back to the bottom-right corner.
+- **Hover** it to show its eye button (look at the screen).
+- **Right-click** it for a menu: Ask, Look at screen, Settings, Switch to bar only, Quit.
+- It shows what AskBar is doing: **idle** (blinks, wags its tail, twitches an ear, sticks its
+  tongue out now and then), **thinking** while an answer streams or a clipboard rewrite runs (eyes
+  up, thought bubbles), and **done** when the answer is ready (happy eyes, sparkles). "Done" stays
+  until you open the bar, so you can tell an answer is waiting. It squishes when you click it and
+  looks surprised while you carry it.
+
+The mascot never takes keyboard focus, so clicking it doesn't disturb the app you're typing in.
+It is original artwork made for this project (an inline SVG in `src/renderer/mascot.html`) and is
+covered by the same AGPL-3.0 licence.
+
+### Moving the bar
+
+Hold the left button on the bar's **AI badge**, its empty edges or the footer, and drag it
+anywhere. In bar-only mode the spot is remembered and the bar reopens there (in the lower half of
+the screen it grows upwards). In mascot mode the bar always opens next to the mascot. **Reset
+positions** in the tray menu puts both back to their defaults.
 
 ### Clipboard rewrite
 
@@ -189,7 +228,7 @@ the provider by that.
 Links only open when you click them (links in answers, or "Get a key" in Settings), and they open
 in your own browser.
 
-**Screenshots** are captured only when you press the hotkey or click the monitor icon. They exist
+**Screenshots** are captured only when you press the hotkey or click an eye button. They exist
 **only in memory**: never written to disk, never cached, never logged, and only ever sent inside
 the request to the provider you chose. They are dropped when you start a new chat, when an idle
 chat is reset, or when AskBar quits. See `src/main/capture.js`.
@@ -236,8 +275,10 @@ the source for `AskBar`.
 ```
 src/
   main/               Electron main process
-    main.js           app lifecycle, single instance, wiring, login item, notifications
+    main.js           app lifecycle, single instance, wiring, mode, login item, notifications
     window.js         the launcher window: frameless, transparent, always on top
+    mascot.js         the optional mascot window: drag, states, position memory
+    layout.js         placement geometry (bar next to mascot, remembered spots; unit tested)
     hotkeys.js        global shortcuts
     ipc.js            IPC handlers (validated, only from our window)
     ai.js             chat and clipboard requests via net.fetch, redaction, proxy warm-up
@@ -246,11 +287,14 @@ src/
     settings.js       electron-store settings + safeStorage-encrypted API keys
     tray.js           tray icon and menu
   preload/
-    preload.cjs       the small API exposed to the page (contextBridge)
-  renderer/           the launcher page (sandboxed, no Node)
+    preload.cjs       the small API exposed to the launcher page (contextBridge)
+    mascot-preload.cjs  the even smaller API for the mascot page
+  renderer/           the pages (sandboxed, no Node)
     index.html, styles.css
-    renderer.js       chat, screenshot chip, settings form
+    renderer.js       chat, screenshot chip, screen hint, settings form
     markdown.js       minimal Markdown renderer that escapes all HTML
+    screen-hint.js    detects questions about the screen (for the hint only)
+    mascot.html, mascot.css, mascot.js   Mochi the mascot: inline SVG artwork and its states
   api/                provider-independent logic (no Electron imports; unit tested)
     ask.js            askAI(): the single entry point, text or text + image, streaming
     providers.js      per-provider request builders and stream parsers
@@ -280,6 +324,10 @@ messages accepted only from the launcher window, with payloads validated.
   in the portable form.
 - **Screen capture** uses the display under the mouse pointer. Protected content (DRM video,
   some apps that opt out of capture) comes out black.
+- **Mascot window** is a 96 px square: its transparent corners still catch clicks. Dragging the
+  mascot or the bar between monitors with different scaling can make it jump slightly before it
+  settles.
+- **The screen hint** recognises common phrasings in English, French and Albanian only.
 - **Redact mode is pattern-based.** It catches obvious emails, IBAN-like strings and 9+ digit
   numbers. It misses names, addresses and short numbers, may mask some product codes, and doesn't
   touch screenshots.

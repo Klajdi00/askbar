@@ -34,6 +34,23 @@ export async function captureActiveDisplay({
   return { mime: 'image/jpeg', base64: jpeg.toString('base64'), width, height, bytes: jpeg.length };
 }
 
+/**
+ * Makes AskBar's own visible windows (bar, mascot) fully transparent while
+ * `fn` runs, so a screenshot shows what is underneath them. Opacity (rather
+ * than hide()) keeps keyboard focus where it was. This is only for our own
+ * capture; the windows are not hidden from screen sharing or recording.
+ */
+export async function withWindowsTransparent(windows, fn) {
+  const visible = windows.filter((w) => w && !w.isDestroyed() && w.isVisible());
+  for (const w of visible) w.setOpacity(0);
+  if (visible.length) await new Promise((r) => setTimeout(r, 150)); // let the compositor draw a frame without us
+  try {
+    return await fn();
+  } finally {
+    for (const w of visible) if (!w.isDestroyed()) w.setOpacity(1);
+  }
+}
+
 function pickSource(sources, display) {
   const byId = sources.find((s) => s.display_id === String(display.id));
   if (byId) return byId;

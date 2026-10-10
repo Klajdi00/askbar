@@ -1,8 +1,9 @@
-// AskBar main process: tray app with a global-hotkey launcher window.
+// AskBar main process: tray app with a global-hotkey launcher window and an
+// optional mascot.
 //
 // Network: the only outgoing requests are the AI API calls in src/main/ai.js,
 // to the provider the user picked. No telemetry, no analytics, no update checks.
-// (Spellcheck is off in the window, which also stops Chromium from downloading
+// (Spellcheck is off in the windows, which also stops Chromium from downloading
 // dictionaries.)
 
 import { app, globalShortcut, Menu, nativeImage, Notification } from 'electron';
@@ -12,18 +13,24 @@ import { fileURLToPath } from 'node:url';
 import { HOTKEY_LABELS } from '../config/defaults.js';
 import { PROVIDERS, PROVIDER_IDS } from '../config/providers.js';
 import { runChat, warmUpProxy } from './ai.js';
-import { captureActiveDisplay } from './capture.js';
+import { captureActiveDisplay, withWindowsTransparent } from './capture.js';
 import { rewriteClipboard } from './clipboard.js';
 import { prettyAccelerator, registerHotkeys } from './hotkeys.js';
 import { registerIpc } from './ipc.js';
+import { Mascot, registerMascotIpc } from './mascot.js';
 import {
   getApiKey,
+  getBarPosition,
+  getMascotPosition,
   getSettings,
   hasApiKey,
   initSettings,
   keyEncryptionAvailable,
   removeApiKey,
+  resetPositions,
   setApiKey,
+  setBarPosition,
+  setMascotPosition,
   updateSettings,
 } from './settings.js';
 import { createTray } from './tray.js';
@@ -36,6 +43,7 @@ const APP_ID = 'io.github.klajdi00.askbar';
 
 let overlay;
 let tray;
+let mascot = null; // only in mascot mode
 let hotkeyErrors = [];
 
 if (!app.requestSingleInstanceLock()) {
@@ -55,7 +63,16 @@ function start() {
   overlay = new Overlay({
     preload: PRELOAD,
     shouldHideOnBlur: () => getSettings().hideOnBlur,
-    onShow: () => warmUpProxy(getSettings().provider),
+    getAnchorRect: () => (mascot?.isVisible() ? mascot.getBounds() : null),
+    // Bar-only mode remembers where the user dragged the bar; in mascot mode it opens beside the mascot.
+    getSavedPosition: () => (getSettings().mode === 'mascot' ? null : getBarPosition()),
+    onUserMove: (spot) => {
+      if (getSettings().mode !== 'mascot') setBarPosition(spot);
+    },
+    onShow: () => {
+      warmUpProxy(getSettings().provider);
+      mascot?.barShown();
+    },
   });
 
   if (!app.isPackaged) {
@@ -73,8 +90,16 @@ function start() {
       runChat,
       publicState,
       saveSettings,
-      captureScreen: () => overlay.whileTransparent(() => captureActiveDisplay()),
+      lookAtScreen: () => askAboutScreen(),
+      onActivity: setActivity,
     },
+  });
+
+  registerMascotIpc({
+    getMascot: () => mascot,
+    onClick: () => overlay.toggle(), // the mascot never takes focus, so the bar keeps it
+    onLook: () => askAboutScreen(),
+    onMenu: showMascotMenu,
   });
 
   tray = createTray({
@@ -86,6 +111,12 @@ function start() {
       screen: () => askAboutScreen({ fromMenu: true }),
       clipboard: rewriteClipboardNow,
       settings: () => overlay.show({ view: 'settings' }),
+      setMascotMode: (on) => setMode(on ? 'mascot' : 'bar'),
+      resetPositions: () => {
+        resetPositions();
+        overlay.hide(); // reopens at the default spot
+        mascot?.resetPosition();
+      },
       setStartOnLogin: (enabled) => {
         updateSettings({ startOnLogin: enabled });
         applyLoginItem(enabled);
@@ -97,10 +128,11 @@ function start() {
 
   applyHotkeys({ notifyOnFailure: true });
   applyLoginItem(getSettings().startOnLogin);
+  applyMode();
 
-  // Started by hand: show the bar so the user sees it is running.
-  // Started at login (--hidden): stay in the tray.
-  if (!process.argv.includes('--hidden')) {
+  // Started by hand in bar mode: show the bar so the user sees it is running.
+  // In mascot mode the mascot is the visible sign. Started at login (--hidden): stay quiet.
+  if (!process.argv.includes('--hidden') && getSettings().mode !== 'mascot') {
     overlay.webContents.once('did-finish-load', () => overlay.show());
   }
 }
@@ -123,21 +155,59 @@ function applyHotkeys({ notifyOnFailure = false } = {}) {
   tray?.update();
 }
 
+/** Creates or removes the mascot to match the "mode" setting. */
+function applyMode() {
+  const wantMascot = getSettings().mode === 'mascot';
+  if (wantMascot && !mascot) {
+    mascot = new Mascot({
+      position: getMascotPosition(),
+      onMoved: setMascotPosition,
+      onDragStart: () => overlay.hide(),
+    });
+  } else if (!wantMascot && mascot) {
+    mascot.destroy();
+    mascot = null;
+  }
+}
+
+function setMode(mode) {
+  updateSettings({ mode });
+  applyMode();
+  tray.update();
+}
+
+function setActivity(state) {
+  mascot?.setState(state, { barVisible: overlay.isVisible() });
+}
+
+function showMascotMenu() {
+  if (!mascot) return;
+  const s = getSettings();
+  Menu.buildFromTemplate([
+    { label: `Ask    ${prettyAccelerator(s.hotkeys.toggle)}`, click: () => overlay.show() },
+    { label: `Look at screen    ${prettyAccelerator(s.hotkeys.screen)}`, click: () => askAboutScreen({ fromMenu: true }) },
+    { label: 'Settings…', click: () => overlay.show({ view: 'settings' }) },
+    { type: 'separator' },
+    { label: 'Switch to bar only', click: () => setMode('bar') },
+    { label: 'Quit AskBar', click: () => app.quit() },
+  ]).popup({ window: mascot.win });
+}
+
 /**
- * Screen hotkey: capture the active display (with the launcher made
- * transparent so it is not in the picture), then show the launcher with the
- * screenshot attached. If the launcher was already open and focused, the
- * renderer sends right away with whatever question is typed.
+ * Look at the screen: the hotkey, the bar's button and the mascot's button
+ * all land here. Captures the active display (with AskBar's own windows made
+ * transparent so they are not in the picture), then opens the bar with the
+ * screenshot attached to the next question. Never runs on its own.
  */
 async function askAboutScreen({ fromMenu = false } = {}) {
-  const wasFocused = overlay.isVisible() && overlay.win.isFocused();
   try {
-    if (fromMenu) await new Promise((r) => setTimeout(r, 250)); // let the tray menu close
-    const image = await overlay.whileTransparent(() => captureActiveDisplay());
+    if (fromMenu) await new Promise((r) => setTimeout(r, 250)); // let the menu close
+    const image = await withWindowsTransparent([overlay.win, mascot?.win], () => captureActiveDisplay());
     overlay.show();
-    overlay.send('screen:attached', { image, autoSend: wasFocused });
+    overlay.send('screen:attached', { image });
   } catch (err) {
-    notify('Screen capture failed', err.message);
+    if (overlay.isVisible()) overlay.send('screen:error', err.message);
+    else notify('Screen capture failed', err.message);
   }
 }
 
@@ -148,7 +218,10 @@ function rewriteClipboardNow() {
     apiKey: getApiKey(settings.provider),
     notify,
     onMissingKey: () => overlay.show({ view: 'settings', notice: 'Add an API key to use clipboard rewrite.' }),
-    setBusy: (busy) => tray.setBusy(busy),
+    setBusy: (busy, succeeded) => {
+      tray.setBusy(busy);
+      setActivity(busy ? 'thinking' : succeeded ? 'done' : 'idle');
+    },
   });
 }
 
@@ -193,6 +266,7 @@ function saveSettings(patch) {
     errors.push(`${prettyAccelerator(f.accelerator)} (${HOTKEY_LABELS[f.name]}): ${f.reason}.`);
   }
   if (after.startOnLogin !== before.startOnLogin) applyLoginItem(after.startOnLogin);
+  if (after.mode !== before.mode) applyMode();
   tray.update();
 
   return { ok: errors.length === 0, errors, state: publicState() };

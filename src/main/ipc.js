@@ -24,7 +24,9 @@ export function registerIpc({ overlay, app }) {
     active.clear();
     const controller = new AbortController();
     active.set(requestId, controller);
+    app.onActivity('thinking');
 
+    let endState = 'idle';
     try {
       const result = await app.runChat({
         settings,
@@ -34,11 +36,14 @@ export function registerIpc({ overlay, app }) {
         onMeta: (meta) => event.sender.send('ai:meta', { requestId, ...meta }),
         onDelta: (text) => event.sender.send('ai:chunk', { requestId, text }),
       });
+      endState = 'done';
       return { ok: true, ...result };
     } catch (err) {
       return { ok: false, code: err.code || 'ERROR', status: err.status, error: err.message };
     } finally {
       active.delete(requestId);
+      // A replaced request finishing late must not override the new one's state.
+      if (active.size === 0) app.onActivity(endState);
     }
   });
 
@@ -53,13 +58,9 @@ export function registerIpc({ overlay, app }) {
     return app.saveSettings(patch);
   });
 
-  ipcMain.handle('screen:capture', async (event) => {
-    if (!fromOverlay(event)) return { ok: false, error: 'Forbidden.' };
-    try {
-      return { ok: true, image: await app.captureScreen() };
-    } catch (err) {
-      return { ok: false, error: err.message };
-    }
+  // The bar's look-at-screen button: exactly the same path as the hotkey.
+  ipcMain.on('screen:look', (event) => {
+    if (fromOverlay(event)) app.lookAtScreen();
   });
 
   ipcMain.on('overlay:resize', (event, height) => {
@@ -68,6 +69,16 @@ export function registerIpc({ overlay, app }) {
 
   ipcMain.on('overlay:hide', (event) => {
     if (fromOverlay(event)) overlay.hide();
+  });
+
+  // Moving the bar: hold the left button on its badge/edges/footer and drag.
+  ipcMain.on('overlay:drag-start', (event, p) => {
+    if (!fromOverlay(event) || !Number.isFinite(p?.offsetX) || !Number.isFinite(p?.offsetY)) return;
+    overlay.startDrag(Math.min(Math.max(p.offsetX, 0), 1000), Math.min(Math.max(p.offsetY, 0), 3000));
+  });
+
+  ipcMain.on('overlay:drag-end', (event) => {
+    if (fromOverlay(event)) overlay.endDrag();
   });
 
   ipcMain.on('clipboard:write', (event, text) => {

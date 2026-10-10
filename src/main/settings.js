@@ -31,6 +31,7 @@ export function updateSettings(patch = {}) {
   const next = getSettings();
 
   if (PROVIDER_IDS.includes(patch.provider)) next.provider = patch.provider;
+  if (patch.mode === 'bar' || patch.mode === 'mascot') next.mode = patch.mode;
 
   for (const id of PROVIDER_IDS) {
     const model = patch.models?.[id];
@@ -56,6 +57,34 @@ export function updateSettings(patch = {}) {
 
   store.set('settings', next);
   return next;
+}
+
+/** Where the mascot was last dropped. Set by the main process only, never by the page. */
+export function getMascotPosition() {
+  const p = store.get('mascotPosition');
+  return p && Number.isFinite(p.x) && Number.isFinite(p.y) ? p : null;
+}
+
+export function setMascotPosition({ x, y }) {
+  if (Number.isFinite(x) && Number.isFinite(y)) store.set('mascotPosition', { x: Math.round(x), y: Math.round(y) });
+}
+
+/** Where the user last dropped the bar (bar-only mode): { x, top } or { x, bottom }. */
+export function getBarPosition() {
+  const p = store.get('barPosition');
+  if (!p || !Number.isFinite(p.x)) return null;
+  return Number.isFinite(p.bottom) ? { x: p.x, bottom: p.bottom } : Number.isFinite(p.top) ? { x: p.x, top: p.top } : null;
+}
+
+export function setBarPosition({ x, top, bottom }) {
+  if (!Number.isFinite(x)) return;
+  if (Number.isFinite(bottom)) store.set('barPosition', { x: Math.round(x), bottom: Math.round(bottom) });
+  else if (Number.isFinite(top)) store.set('barPosition', { x: Math.round(x), top: Math.round(top) });
+}
+
+export function resetPositions() {
+  store.delete('barPosition');
+  store.delete('mascotPosition');
 }
 
 export function keyEncryptionAvailable() {

@@ -10,6 +10,7 @@ export const DEFAULT_SETTINGS = {
     screen: 'Control+Shift+S',
     clipboard: 'Control+Shift+J',
   },
+  mode: 'bar', // 'bar' (bar only) or 'mascot' (opt-in helper character)
   redact: false,
   hideOnBlur: true,
   startOnLogin: false,
