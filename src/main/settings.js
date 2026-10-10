@@ -1,6 +1,7 @@
 import Store from 'electron-store';
 import { safeStorage } from 'electron';
 import { DEFAULT_SETTINGS } from '../config/defaults.js';
+import { MASCOT_IDS } from '../config/mascots.js';
 import { PROVIDER_IDS } from '../config/providers.js';
 
 // Settings live in %APPDATA%\AskBar\settings.json (electron-store).
@@ -32,6 +33,7 @@ export function updateSettings(patch = {}) {
 
   if (PROVIDER_IDS.includes(patch.provider)) next.provider = patch.provider;
   if (patch.mode === 'bar' || patch.mode === 'mascot') next.mode = patch.mode;
+  if (MASCOT_IDS.includes(patch.mascot)) next.mascot = patch.mascot;
 
   for (const id of PROVIDER_IDS) {
     const model = patch.models?.[id];
@@ -80,6 +82,15 @@ export function setBarPosition({ x, top, bottom }) {
   if (!Number.isFinite(x)) return;
   if (Number.isFinite(bottom)) store.set('barPosition', { x: Math.round(x), bottom: Math.round(bottom) });
   else if (Number.isFinite(top)) store.set('barPosition', { x: Math.round(x), top: Math.round(top) });
+}
+
+/** Your own mascot: which copied files show in which state. Written by the main process only. */
+export function getCustomMascot() {
+  return store.get('customMascot') || null;
+}
+
+export function setCustomMascot(record) {
+  store.set('customMascot', record);
 }
 
 export function resetPositions() {

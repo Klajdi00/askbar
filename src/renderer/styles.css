@@ -603,6 +603,34 @@ textarea:focus {
   border-color: var(--accent);
 }
 
+.custom-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.custom-row img {
+  width: 34px;
+  height: 34px;
+  object-fit: contain;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--bg-soft);
+}
+
+.custom-row img:not([src]) {
+  visibility: hidden;
+}
+
+.custom-row .hint {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .checks {
   display: flex;
   flex-direction: column;

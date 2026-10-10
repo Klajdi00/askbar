@@ -23,6 +23,7 @@ export class Mascot {
     this.onMoved = onMoved;
     this.onDragStart = onDragStart;
     this.state = 'idle';
+    this.character = { id: 'mochi' };
     this.timer = null;
     this.dragTimer = null;
 
@@ -55,7 +56,10 @@ export class Mascot {
     });
     this.win.loadFile(PAGE);
     this.win.once('ready-to-show', () => this.win.showInactive());
-    this.win.webContents.on('did-finish-load', () => this.send('mascot:state', this.state));
+    this.win.webContents.on('did-finish-load', () => {
+      this.send('mascot:character', this.character);
+      this.send('mascot:state', this.state);
+    });
     this.win.webContents.on('will-navigate', (e) => e.preventDefault());
     this.win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   }
@@ -125,6 +129,12 @@ export class Mascot {
     this.state = state;
     this.send('mascot:state', state);
     if (state === 'done' && barVisible) this.timer = setTimeout(() => this.setState('idle'), 2500);
+  }
+
+  /** { id: 'mochi' | 'bolt' | 'boo' } or { id: 'custom', images: { idle, thinking?, done? } } (data: URLs). */
+  setCharacter(character) {
+    this.character = character;
+    this.send('mascot:character', character);
   }
 
   barShown() {

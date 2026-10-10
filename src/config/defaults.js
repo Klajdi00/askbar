@@ -11,6 +11,7 @@ export const DEFAULT_SETTINGS = {
     clipboard: 'Control+Shift+J',
   },
   mode: 'bar', // 'bar' (bar only) or 'mascot' (opt-in helper character)
+  mascot: 'mochi', // which character: see src/config/mascots.js
   redact: false,
   hideOnBlur: true,
   startOnLogin: false,

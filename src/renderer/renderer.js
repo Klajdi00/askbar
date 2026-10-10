@@ -23,6 +23,12 @@
     footer: $('footer'),
     status: $('status'),
     setMode: $('set-mode'),
+    setMascot: $('set-mascot'),
+    customRow: $('custom-row'),
+    customPreview: $('custom-preview'),
+    customNames: $('custom-names'),
+    customChoose: $('custom-choose'),
+    customHelp: $('custom-help'),
     setProvider: $('set-provider'),
     setModel: $('set-model'),
     modelList: $('model-list'),
@@ -293,6 +299,16 @@
     state.draft = { provider: s.provider, models: { ...s.models }, keys: {}, hotkeys: { ...s.hotkeys } };
 
     el.setMode.value = s.mode;
+    el.setMascot.replaceChildren(...state.app.mascots.map((m) => new Option(m.label, m.id)));
+    el.setMascot.value = s.mascot;
+    el.setMascot.dataset.previous = s.mascot;
+    el.customPreview.removeAttribute('src');
+    if (state.app.customMascot) {
+      api.getCustomMascotPreview().then((url) => {
+        if (url) el.customPreview.src = url;
+      });
+    }
+    fillCustomMascot();
     el.setProvider.replaceChildren(...Object.values(state.app.providers).map((p) => new Option(p.label, p.id)));
     el.setProvider.value = s.provider;
     fillProviderFields();
@@ -346,11 +362,40 @@
     el.keyRemove.hidden = !saved || removing;
   }
 
+  /** Settings → Mascot: the custom-image row shows only for "Your own image…". */
+  function fillCustomMascot() {
+    const isCustom = el.setMascot.value === 'custom';
+    const info = state.app.customMascot;
+    el.customRow.hidden = !isCustom;
+    el.customHelp.hidden = !isCustom;
+    if (!info) {
+      el.customNames.textContent = 'No image chosen yet';
+    } else {
+      const extra = ['thinking', 'done'].filter((k) => info[k]).map((k) => `${k}: ${info[k]}`);
+      el.customNames.textContent = [info.idle, ...extra].join(' · ');
+    }
+  }
+
+  async function chooseCustomMascot() {
+    const res = await api.chooseCustomMascot();
+    if (res.ok) {
+      state.app.customMascot = res.info;
+      if (res.preview) el.customPreview.src = res.preview;
+      el.setMascot.value = 'custom';
+      showErrors([]);
+    } else if (res.error) {
+      showErrors([res.error]);
+    }
+    fillCustomMascot();
+    return res.ok;
+  }
+
   async function saveSettings() {
     const d = state.draft;
     const keys = Object.fromEntries(Object.entries(d.keys).filter(([, v]) => v === null || (v && v.trim())));
     const res = await api.saveSettings({
       mode: el.setMode.value,
+      mascot: el.setMascot.value,
       provider: d.provider,
       models: d.models,
       keys,
@@ -606,6 +651,16 @@
     });
 
     // Settings form
+    el.setMascot.addEventListener('change', async () => {
+      // Picking "Your own image…" for the first time opens the file picker right away.
+      if (el.setMascot.value === 'custom' && !state.app.customMascot) {
+        const chosen = await chooseCustomMascot();
+        if (!chosen) el.setMascot.value = el.setMascot.dataset.previous;
+      }
+      el.setMascot.dataset.previous = el.setMascot.value;
+      fillCustomMascot();
+    });
+    el.customChoose.addEventListener('click', chooseCustomMascot);
     el.setProvider.addEventListener('change', () => {
       state.draft.provider = el.setProvider.value;
       fillProviderFields();

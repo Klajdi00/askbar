@@ -1,8 +1,8 @@
-/* Mochi, the AskBar mascot. The window is transparent and 96x96. */
-
-:root {
-  --ink: #4a3426;
-}
+/* AskBar mascots. The window is transparent and 96x96.
+   1. Shared state rules: work for every character that uses the shared class
+      names (see the comment in mascot.html), and for your own image.
+   2. Per-character colours and special moves.
+   3. Shared overlay (thinking dots, sparkles) and the look-at-screen button. */
 
 html,
 body {
@@ -23,120 +23,30 @@ body {
   cursor: grabbing;
 }
 
+/* Only the chosen character is shown. */
 .art {
-  display: block;
+  display: none;
   width: 96px;
   height: 96px;
 }
 
-/* ---- Artwork -------------------------------------------------------------- */
-
-.shadow {
-  fill: rgba(40, 24, 10, 0.2);
+#mascot[data-character='mochi'] .art-mochi,
+#mascot[data-character='bolt'] .art-bolt,
+#mascot[data-character='boo'] .art-boo,
+#mascot[data-character='custom'] .art-custom {
+  display: block;
 }
 
-.fur {
-  fill: url(#fur);
-  stroke: var(--ink);
-  stroke-width: 2.2;
-  stroke-linejoin: round;
-}
+/* ==== 1. Shared state rules ================================================= */
 
-.paw {
-  fill: #ffd8ab;
-  stroke-width: 2;
-}
-
-.ear-in {
-  fill: #ff9db0;
-}
-
-.belly {
-  fill: #fff3e2;
-}
-
-.tail-line,
-.tail-fill {
-  fill: none;
-  stroke-linecap: round;
-}
-
-.tail-line {
-  stroke: var(--ink);
-  stroke-width: 7.5;
-}
-
-.tail-fill {
-  stroke: #ffc287;
-  stroke-width: 3.6;
-}
-
-.whiskers path {
-  fill: none;
-  stroke: var(--ink);
-  stroke-width: 1.3;
-  stroke-linecap: round;
-  opacity: 0.75;
-}
-
-.eye ellipse {
-  fill: #2b1d16;
-}
-
-.shine {
-  fill: #ffffff;
-}
-
-.cheek {
-  fill: #ff8fa3;
-  opacity: 0.6;
-}
-
-.nose {
-  fill: #ff6f8a;
-  stroke: #ff6f8a;
-  stroke-width: 1;
-  stroke-linejoin: round;
-}
-
-.tongue {
-  fill: #ff6f8a;
-  stroke: var(--ink);
-  stroke-width: 1;
-}
-
-.mouth,
-.happy-eyes path {
-  fill: none;
-  stroke: var(--ink);
-  stroke-width: 1.8;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.happy-eyes path {
-  stroke-width: 2.4;
-}
-
+.happy-eyes,
+.mouth-thinking,
 .mouth-done,
 .mouth-surprised {
-  fill: #7a2e3b;
+  opacity: 0;
 }
-
-.dots circle {
-  fill: #ffffff;
-  stroke: var(--ink);
-  stroke-width: 1.4;
-}
-
-.sparkles path {
-  fill: #ffc83d;
-}
-
-/* ---- Moving parts ---------------------------------------------------------- */
 
 .figure {
-  transform-origin: 48px 88px;
   animation: breathe 3.2s ease-in-out infinite;
 }
 
@@ -152,34 +62,13 @@ body {
   transition: transform 0.2s;
 }
 
-.tail {
-  transform-origin: 72px 79px;
-  animation: wag 2.4s ease-in-out infinite;
-}
-
-.ear-left {
-  transform-origin: 33px 38px;
-  animation: twitch 6s ease-in-out infinite;
-}
-
 /* Every few seconds: a little "blep". */
 .tongue {
   opacity: 0;
   animation: blep 7s infinite;
 }
 
-/* State-specific parts are hidden by default. */
-.happy-eyes,
-.mouth-thinking,
-.mouth-done,
-.mouth-surprised,
-.dots,
-.sparkles {
-  opacity: 0;
-}
-
-/* ---- Thinking: while an answer streams -------------------------------------- */
-
+/* Thinking: while an answer streams */
 [data-state='thinking'] .figure {
   animation: bob 0.9s ease-in-out infinite;
 }
@@ -188,17 +77,363 @@ body {
   transform: translate(1.5px, -2.5px);
 }
 
-[data-state='thinking'] .tail {
-  animation-duration: 0.7s;
-}
-
 [data-state='thinking'] .mouth-idle,
 [data-state='thinking'] .tongue {
   opacity: 0;
   animation: none;
 }
 
-[data-state='thinking'] .mouth-thinking,
+[data-state='thinking'] .mouth-thinking {
+  opacity: 1;
+}
+
+/* Done: the answer is ready */
+[data-state='done'] .eyes,
+[data-state='done'] .mouth-idle,
+[data-state='done'] .tongue {
+  opacity: 0;
+  animation: none;
+}
+
+[data-state='done'] .happy-eyes,
+[data-state='done'] .mouth-done {
+  opacity: 1;
+}
+
+[data-state='done'] .figure {
+  animation: hop 0.5s ease-out, breathe 3.2s ease-in-out 0.5s infinite;
+}
+
+/* Picked up: wide eyes, little "o" mouth, stretched like a held cat */
+#mascot.dragging .figure {
+  animation: none;
+  transform: scale(0.95, 1.06);
+}
+
+#mascot.dragging .eyes {
+  opacity: 1;
+  transform: scale(1.18);
+}
+
+#mascot.dragging .eye {
+  animation: none;
+}
+
+#mascot.dragging .mouth-surprised {
+  opacity: 1;
+}
+
+#mascot.dragging .happy-eyes,
+#mascot.dragging .mouth-idle,
+#mascot.dragging .mouth-thinking,
+#mascot.dragging .mouth-done,
+#mascot.dragging .tongue {
+  opacity: 0;
+  animation: none;
+}
+
+/* Clicked: a jelly squish */
+#mascot.squish .figure {
+  animation: squish 0.4s ease-out;
+}
+
+/* Your own image: the same moves, applied to the whole picture */
+.art-custom {
+  position: absolute;
+  left: 6px;
+  top: 8px;
+  width: 84px;
+  height: 84px;
+  object-fit: contain;
+  pointer-events: none;
+  transform-origin: 50% 100%;
+  animation: breathe 3.2s ease-in-out infinite;
+}
+
+[data-state='thinking'] .art-custom {
+  animation: bob 0.9s ease-in-out infinite;
+}
+
+[data-state='done'] .art-custom {
+  animation: hop 0.5s ease-out, breathe 3.2s ease-in-out 0.5s infinite;
+}
+
+#mascot.dragging .art-custom {
+  animation: wiggle 0.3s ease-in-out infinite;
+}
+
+#mascot.squish .art-custom {
+  animation: squish 0.4s ease-out;
+}
+
+/* ==== 2. Characters ========================================================= */
+
+/* ---- Mochi, the kitten ---- */
+
+.art-mochi {
+  --ink: #4a3426;
+}
+
+.art-mochi .figure {
+  transform-origin: 48px 88px;
+}
+
+.art-mochi .shadow {
+  fill: rgba(40, 24, 10, 0.2);
+}
+
+.art-mochi .fur {
+  fill: url(#fur);
+  stroke: var(--ink);
+  stroke-width: 2.2;
+  stroke-linejoin: round;
+}
+
+.art-mochi .paw {
+  fill: #ffd8ab;
+  stroke-width: 2;
+}
+
+.art-mochi .ear-in {
+  fill: #ff9db0;
+}
+
+.art-mochi .belly {
+  fill: #fff3e2;
+}
+
+.art-mochi .tail-line,
+.art-mochi .tail-fill {
+  fill: none;
+  stroke-linecap: round;
+}
+
+.art-mochi .tail-line {
+  stroke: var(--ink);
+  stroke-width: 7.5;
+}
+
+.art-mochi .tail-fill {
+  stroke: #ffc287;
+  stroke-width: 3.6;
+}
+
+.art-mochi .whiskers path {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 1.3;
+  stroke-linecap: round;
+  opacity: 0.75;
+}
+
+.art-mochi .eye ellipse {
+  fill: #2b1d16;
+}
+
+.art-mochi .cheek {
+  fill: #ff8fa3;
+  opacity: 0.6;
+}
+
+.art-mochi .nose {
+  fill: #ff6f8a;
+  stroke: #ff6f8a;
+  stroke-width: 1;
+  stroke-linejoin: round;
+}
+
+.art-mochi .tail {
+  transform-origin: 72px 79px;
+  animation: wag 2.4s ease-in-out infinite;
+}
+
+.art-mochi .ear-left {
+  transform-origin: 33px 38px;
+  animation: twitch 6s ease-in-out infinite;
+}
+
+[data-state='thinking'] .art-mochi .tail {
+  animation-duration: 0.7s;
+}
+
+[data-state='done'] .art-mochi .tail {
+  animation: wag-happy 0.6s ease-in-out infinite;
+}
+
+#mascot.dragging .art-mochi .tail {
+  animation: wag 0.35s ease-in-out infinite;
+}
+
+/* ---- Bolt, the robot ---- */
+
+.art-bolt {
+  --ink: #1e1b4b;
+}
+
+.art-bolt .figure {
+  transform-origin: 48px 86px;
+}
+
+.art-bolt .shadow {
+  fill: rgba(15, 23, 42, 0.22);
+}
+
+.art-bolt .body {
+  fill: url(#metal);
+}
+
+.art-bolt .face {
+  fill: #eef0ff;
+}
+
+.art-bolt .arm,
+.art-bolt .foot {
+  fill: #5b54e8;
+}
+
+.art-bolt .antenna path {
+  stroke: #4338ca;
+  stroke-width: 3;
+  stroke-linecap: round;
+}
+
+.art-bolt .antenna-ball {
+  fill: #c7d2fe;
+}
+
+.art-bolt .eye {
+  fill: var(--ink);
+}
+
+.art-bolt .cheek {
+  fill: #f9a8d4;
+  opacity: 0.7;
+}
+
+.art-bolt .arm-right {
+  transform-origin: 80px 55px;
+  transition: transform 0.25s;
+}
+
+[data-state='thinking'] .art-bolt .antenna-ball {
+  animation: glow 0.9s ease-in-out infinite;
+}
+
+[data-state='done'] .art-bolt .arm-right {
+  transform: rotate(-38deg);
+}
+
+/* ---- Boo, the ghost ---- */
+
+.art-boo {
+  --ink: #3b3363;
+}
+
+.art-boo .figure {
+  transform-origin: 48px 80px;
+  animation: float 3s ease-in-out infinite;
+}
+
+.art-boo .shadow {
+  fill: rgba(30, 20, 60, 0.18);
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: shadow-float 3s ease-in-out infinite;
+}
+
+.art-boo .body {
+  fill: url(#mist);
+  stroke: var(--ink);
+  stroke-width: 2.2;
+  stroke-linejoin: round;
+}
+
+.art-boo .arm {
+  fill: #eeebff;
+  stroke: var(--ink);
+  stroke-width: 2;
+}
+
+.art-boo .arm-left {
+  transform-origin: 25px 52px;
+  animation: wave 2.8s ease-in-out infinite;
+}
+
+.art-boo .eye ellipse {
+  fill: #2a2342;
+}
+
+.art-boo .cheek {
+  fill: #ff9ec4;
+  opacity: 0.65;
+}
+
+[data-state='done'] .art-boo .figure {
+  animation: hop 0.5s ease-out, float 3s ease-in-out 0.5s infinite;
+}
+
+/* ---- Shared face details ---- */
+
+.shine {
+  fill: #ffffff;
+}
+
+.mouth,
+.happy-eyes path {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.happy-eyes path {
+  stroke-width: 2.4;
+}
+
+.art-bolt .mouth {
+  stroke-width: 2.4;
+}
+
+.art-mochi .mouth-done,
+.art-mochi .mouth-surprised,
+.art-boo .mouth-done,
+.art-boo .mouth-surprised,
+.art-bolt .mouth-surprised {
+  fill: #7a2e3b;
+}
+
+.tongue {
+  fill: #ff6f8a;
+  stroke: var(--ink);
+  stroke-width: 1;
+}
+
+/* ==== 3. Overlay and look button =========================================== */
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  width: 96px;
+  height: 96px;
+  pointer-events: none;
+}
+
+.dots,
+.sparkles {
+  opacity: 0;
+}
+
+.dots circle {
+  fill: #ffffff;
+  stroke: #4a3426;
+  stroke-width: 1.4;
+}
+
+.sparkles path {
+  fill: #ffc83d;
+}
+
 [data-state='thinking'] .dots {
   opacity: 1;
 }
@@ -215,27 +450,8 @@ body {
   animation-delay: 0.4s;
 }
 
-/* ---- Done: the answer is ready ---------------------------------------------- */
-
-[data-state='done'] .eyes,
-[data-state='done'] .mouth-idle,
-[data-state='done'] .tongue {
-  opacity: 0;
-  animation: none;
-}
-
-[data-state='done'] .happy-eyes,
-[data-state='done'] .mouth-done,
 [data-state='done'] .sparkles {
   opacity: 1;
-}
-
-[data-state='done'] .figure {
-  animation: hop 0.5s ease-out, breathe 3.2s ease-in-out 0.5s infinite;
-}
-
-[data-state='done'] .tail {
-  animation: wag-happy 0.6s ease-in-out infinite;
 }
 
 [data-state='done'] .sparkles path {
@@ -252,183 +468,10 @@ body {
   animation-delay: 0.9s;
 }
 
-/* ---- Picked up: wide eyes, little "o" mouth, stretched like a held cat ----- */
-
-#mascot.dragging .figure {
-  animation: none;
-  transform: scale(0.95, 1.06);
-}
-
-#mascot.dragging .eyes {
-  transform: scale(1.18);
-}
-
-#mascot.dragging .eye {
-  animation: none;
-}
-
-#mascot.dragging .eyes,
-#mascot.dragging .mouth-surprised {
-  opacity: 1;
-}
-
-#mascot.dragging .happy-eyes,
-#mascot.dragging .mouth-idle,
-#mascot.dragging .mouth-thinking,
-#mascot.dragging .mouth-done,
-#mascot.dragging .tongue {
+#mascot.dragging .dots,
+#mascot.dragging .sparkles {
   opacity: 0;
-  animation: none;
 }
-
-#mascot.dragging .tail {
-  animation: wag 0.35s ease-in-out infinite;
-}
-
-/* ---- Clicked: a jelly squish ------------------------------------------------ */
-
-#mascot.squish .figure {
-  animation: squish 0.4s ease-out;
-}
-
-/* ---- Keyframes -------------------------------------------------------------- */
-
-@keyframes blink {
-  0%,
-  92%,
-  100% {
-    transform: scaleY(1);
-  }
-  95% {
-    transform: scaleY(0.1);
-  }
-}
-
-@keyframes breathe {
-  0%,
-  100% {
-    transform: scale(1, 1);
-  }
-  50% {
-    transform: scale(1.02, 0.98);
-  }
-}
-
-@keyframes bob {
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-3px);
-  }
-}
-
-@keyframes hop {
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-  40% {
-    transform: translateY(-7px) scale(0.97, 1.04);
-  }
-}
-
-@keyframes squish {
-  0% {
-    transform: scale(1, 1);
-  }
-  30% {
-    transform: scale(1.14, 0.86);
-  }
-  60% {
-    transform: scale(0.94, 1.07);
-  }
-  100% {
-    transform: scale(1, 1);
-  }
-}
-
-@keyframes wag {
-  0%,
-  100% {
-    transform: rotate(-6deg);
-  }
-  50% {
-    transform: rotate(10deg);
-  }
-}
-
-@keyframes wag-happy {
-  0%,
-  100% {
-    transform: rotate(-18deg);
-  }
-  50% {
-    transform: rotate(4deg);
-  }
-}
-
-@keyframes twitch {
-  0%,
-  86%,
-  100% {
-    transform: rotate(0);
-  }
-  89% {
-    transform: rotate(-12deg);
-  }
-  92% {
-    transform: rotate(3deg);
-  }
-  95% {
-    transform: rotate(-6deg);
-  }
-}
-
-@keyframes blep {
-  0%,
-  68%,
-  86%,
-  100% {
-    opacity: 0;
-  }
-  70%,
-  84% {
-    opacity: 1;
-  }
-}
-
-@keyframes dot {
-  0%,
-  100% {
-    opacity: 0.25;
-  }
-  40% {
-    opacity: 1;
-  }
-}
-
-@keyframes twinkle {
-  0%,
-  100% {
-    transform: scale(0.6);
-    opacity: 0.5;
-  }
-  50% {
-    transform: scale(1.15);
-    opacity: 1;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  * {
-    animation: none !important;
-    transition: none !important;
-  }
-}
-
-/* ---- Look-at-screen button (shown on hover) ------------------------------- */
 
 #look {
   position: absolute;
@@ -483,5 +526,198 @@ body {
 
   #look:hover {
     background: #34353a;
+  }
+}
+
+/* ==== Keyframes ============================================================= */
+
+@keyframes blink {
+  0%,
+  92%,
+  100% {
+    transform: scaleY(1);
+  }
+  95% {
+    transform: scaleY(0.1);
+  }
+}
+
+@keyframes breathe {
+  0%,
+  100% {
+    transform: scale(1, 1);
+  }
+  50% {
+    transform: scale(1.02, 0.98);
+  }
+}
+
+@keyframes bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes shadow-float {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(0.82);
+    opacity: 0.7;
+  }
+}
+
+@keyframes hop {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  40% {
+    transform: translateY(-7px) scale(0.97, 1.04);
+  }
+}
+
+@keyframes squish {
+  0% {
+    transform: scale(1, 1);
+  }
+  30% {
+    transform: scale(1.14, 0.86);
+  }
+  60% {
+    transform: scale(0.94, 1.07);
+  }
+  100% {
+    transform: scale(1, 1);
+  }
+}
+
+@keyframes wiggle {
+  0%,
+  100% {
+    transform: rotate(-4deg) scale(0.96, 1.05);
+  }
+  50% {
+    transform: rotate(4deg) scale(0.96, 1.05);
+  }
+}
+
+@keyframes wag {
+  0%,
+  100% {
+    transform: rotate(-6deg);
+  }
+  50% {
+    transform: rotate(10deg);
+  }
+}
+
+@keyframes wag-happy {
+  0%,
+  100% {
+    transform: rotate(-18deg);
+  }
+  50% {
+    transform: rotate(4deg);
+  }
+}
+
+@keyframes wave {
+  0%,
+  70%,
+  100% {
+    transform: rotate(0);
+  }
+  80% {
+    transform: rotate(18deg);
+  }
+  90% {
+    transform: rotate(-6deg);
+  }
+}
+
+@keyframes twitch {
+  0%,
+  86%,
+  100% {
+    transform: rotate(0);
+  }
+  89% {
+    transform: rotate(-12deg);
+  }
+  92% {
+    transform: rotate(3deg);
+  }
+  95% {
+    transform: rotate(-6deg);
+  }
+}
+
+@keyframes blep {
+  0%,
+  68%,
+  86%,
+  100% {
+    opacity: 0;
+  }
+  70%,
+  84% {
+    opacity: 1;
+  }
+}
+
+@keyframes glow {
+  0%,
+  100% {
+    fill: #c7d2fe;
+  }
+  50% {
+    fill: #fbbf24;
+  }
+}
+
+@keyframes dot {
+  0%,
+  100% {
+    opacity: 0.25;
+  }
+  40% {
+    opacity: 1;
+  }
+}
+
+@keyframes twinkle {
+  0%,
+  100% {
+    transform: scale(0.6);
+    opacity: 0.5;
+  }
+  50% {
+    transform: scale(1.15);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
   }
 }

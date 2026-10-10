@@ -8,14 +8,37 @@
   const api = window.mascot;
   const root = document.getElementById('mascot');
   const look = document.getElementById('look');
+  const custom = document.getElementById('custom');
   const DRAG_THRESHOLD = 4; // px of movement before a press becomes a drag
+  const CHARACTERS = ['mochi', 'bolt', 'boo', 'custom'];
 
   let press = null; // { x, y, offsetX, offsetY } while the left button is down
   let dragging = false;
+  let customImages = {}; // your own mascot: { idle, thinking?, done? } as data: URLs
 
   api.onState((state) => {
     root.dataset.state = ['idle', 'thinking', 'done'].includes(state) ? state : 'idle';
+    showCustomImage();
   });
+
+  api.onCharacter((character) => {
+    const id = CHARACTERS.includes(character?.id) ? character.id : 'mochi';
+    customImages = {};
+    if (id === 'custom') {
+      for (const [state, url] of Object.entries(character.images || {})) {
+        if (typeof url === 'string' && url.startsWith('data:image/')) customImages[state] = url;
+      }
+    }
+    root.dataset.character = id === 'custom' && !customImages.idle ? 'mochi' : id;
+    showCustomImage();
+  });
+
+  /** Your own mascot: the picture for the current state, or the idle one. */
+  function showCustomImage() {
+    if (root.dataset.character !== 'custom') return;
+    const src = customImages[root.dataset.state] || customImages.idle;
+    if (src && custom.src !== src) custom.src = src;
+  }
 
   root.addEventListener('pointerdown', (e) => {
     if (e.button !== 0) return;

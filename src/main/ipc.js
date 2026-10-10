@@ -58,6 +58,12 @@ export function registerIpc({ overlay, app }) {
     return app.saveSettings(patch);
   });
 
+  // Settings → Mascot → "Your own image…"
+  ipcMain.handle('mascot:choose-custom', async (event) =>
+    fromOverlay(event) ? app.chooseCustomMascot() : { ok: false, error: 'Forbidden.' }
+  );
+  ipcMain.handle('mascot:custom-preview', async (event) => (fromOverlay(event) ? app.customMascotPreview() : null));
+
   // The bar's look-at-screen button: exactly the same path as the hotkey.
   ipcMain.on('screen:look', (event) => {
     if (fromOverlay(event)) app.lookAtScreen();

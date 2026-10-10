@@ -154,7 +154,8 @@ recent screenshot is re-sent with follow-ups.
 ### Mascot mode (optional)
 
 Off by default. Turn it on in **Settings → Mode → Mascot**, or with **Mascot mode** in the tray
-menu. **Mochi**, a round ginger kitten (about 96 px), then sits on top of your other windows:
+menu. A small character (about 96 px; Mochi the kitten by default) then sits on top of your other
+windows:
 
 - **Click** it (or press **Ctrl+Space**) to open the compact bar right next to it. Click it again
   to close the bar. In the lower half of the screen, the bar opens upwards so the input stays next
@@ -164,15 +165,45 @@ menu. **Mochi**, a round ginger kitten (about 96 px), then sits on top of your o
   no longer on a screen (monitor unplugged), it goes back to the bottom-right corner.
 - **Hover** it to show its eye button (look at the screen).
 - **Right-click** it for a menu: Ask, Look at screen, Settings, Switch to bar only, Quit.
-- It shows what AskBar is doing: **idle** (blinks, wags its tail, twitches an ear, sticks its
-  tongue out now and then), **thinking** while an answer streams or a clipboard rewrite runs (eyes
-  up, thought bubbles), and **done** when the answer is ready (happy eyes, sparkles). "Done" stays
+- It shows what AskBar is doing: **idle** (Mochi blinks, wags its tail, twitches an ear, sticks
+  its tongue out now and then), **thinking** while an answer streams or a clipboard rewrite runs
+  (eyes up, thought bubbles), and **done** when the answer is ready (happy eyes, sparkles). "Done" stays
   until you open the bar, so you can tell an answer is waiting. It squishes when you click it and
   looks surprised while you carry it.
 
 The mascot never takes keyboard focus, so clicking it doesn't disturb the app you're typing in.
-It is original artwork made for this project (an inline SVG in `src/renderer/mascot.html`) and is
-covered by the same AGPL-3.0 licence.
+
+### Choosing your mascot
+
+Pick one in **Settings → Mascot**; the change shows immediately:
+
+| Mascot | |
+|---|---|
+| **Mochi, the kitten** | round ginger kitten: tail wag, ear twitch, tongue "blep" |
+| **Bolt, the robot** | blob robot: antenna glows while thinking, raises an arm when done |
+| **Boo, the ghost** | little ghost: floats and waves |
+| **Your own image…** | any picture you like |
+
+All of them react the same way: thought bubbles while thinking, sparkles when done, a squish when
+clicked, and a surprised look (or a wiggle, for your own image) while you carry them.
+
+**Your own image.** Choose **Your own image…** and pick a file: PNG, GIF (animated GIFs work),
+WebP, JPG or SVG, up to 5 MB. A transparent background looks best. To give each state its own
+picture, select up to three files at once whose names contain **idle**, **thinking** and **done**
+(for example `frog-idle.gif`, `frog-thinking.gif`, `frog-done.gif`); states without their own
+picture use the idle one. AskBar copies the files into `%APPDATA%\AskBar\mascot`, so moving or
+deleting the originals doesn't break your mascot. They are only shown on your screen and never
+uploaded anywhere. Use pictures you have the right to use.
+
+**Adding a built-in character (contributors).** Draw a 96×96 SVG and add it to
+`src/renderer/mascot.html` with `class="art art-<id>"`. Reuse the shared class names
+(`figure`, `eyes`/`eye`, `happy-eyes`, `mouth-idle`, `mouth-thinking`, `mouth-done`,
+`mouth-surprised`, optional `tongue`) and the shared state animations in `mascot.css` work
+automatically; add its colours and any special moves under `.art-<id>`. Then list it in
+`src/config/mascots.js` and in `CHARACTERS` in `src/renderer/mascot.js`.
+
+The built-in mascots are original artwork made for this project and are covered by the same
+AGPL-3.0 licence.
 
 ### Moving the bar
 
@@ -240,6 +271,8 @@ available, the key is stored unencrypted in that same per-user file, and Setting
 
 **Conversations** live in memory only and are never saved.
 
+**Your own mascot images** are copied to `%APPDATA%\AskBar\mascot` and only displayed locally.
+
 **Clipboard** is read only when you press the clipboard-rewrite hotkey.
 
 What the provider receives: your question, the earlier turns of the current chat, the screenshot
@@ -277,7 +310,9 @@ src/
   main/               Electron main process
     main.js           app lifecycle, single instance, wiring, mode, login item, notifications
     window.js         the launcher window: frameless, transparent, always on top
-    mascot.js         the optional mascot window: drag, states, position memory
+    mascot.js         the optional mascot window: drag, states, character, position memory
+    mascot-custom.js  your own mascot images: file picker, local copies, loading
+    mascot-files.js   which picture goes with which state (unit tested)
     layout.js         placement geometry (bar next to mascot, remembered spots; unit tested)
     hotkeys.js        global shortcuts
     ipc.js            IPC handlers (validated, only from our window)
@@ -294,7 +329,7 @@ src/
     renderer.js       chat, screenshot chip, screen hint, settings form
     markdown.js       minimal Markdown renderer that escapes all HTML
     screen-hint.js    detects questions about the screen (for the hint only)
-    mascot.html, mascot.css, mascot.js   Mochi the mascot: inline SVG artwork and its states
+    mascot.html, mascot.css, mascot.js   the mascots (Mochi, Bolt, Boo, your own image) and their states
   api/                provider-independent logic (no Electron imports; unit tested)
     ask.js            askAI(): the single entry point, text or text + image, streaming
     providers.js      per-provider request builders and stream parsers
@@ -303,6 +338,7 @@ src/
     redact.js         redact mode: mask and restore
   config/
     providers.js      provider list, default models, key links
+    mascots.js        mascot list and custom-image limits
     defaults.js       default settings, hotkeys, limits, prompts
 test/                 node:test unit tests (npm test)
 scripts/make-icons.mjs

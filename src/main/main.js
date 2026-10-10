@@ -11,6 +11,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { HOTKEY_LABELS } from '../config/defaults.js';
+import { MASCOTS } from '../config/mascots.js';
 import { PROVIDERS, PROVIDER_IDS } from '../config/providers.js';
 import { runChat, warmUpProxy } from './ai.js';
 import { captureActiveDisplay, withWindowsTransparent } from './capture.js';
@@ -18,9 +19,11 @@ import { rewriteClipboard } from './clipboard.js';
 import { prettyAccelerator, registerHotkeys } from './hotkeys.js';
 import { registerIpc } from './ipc.js';
 import { Mascot, registerMascotIpc } from './mascot.js';
+import { chooseCustomMascot, loadCustomImages, removeCustomFiles } from './mascot-custom.js';
 import {
   getApiKey,
   getBarPosition,
+  getCustomMascot,
   getMascotPosition,
   getSettings,
   hasApiKey,
@@ -30,6 +33,7 @@ import {
   resetPositions,
   setApiKey,
   setBarPosition,
+  setCustomMascot,
   setMascotPosition,
   updateSettings,
 } from './settings.js';
@@ -92,6 +96,8 @@ function start() {
       saveSettings,
       lookAtScreen: () => askAboutScreen(),
       onActivity: setActivity,
+      chooseCustomMascot: chooseCustomMascotNow,
+      customMascotPreview,
     },
   });
 
@@ -164,10 +170,52 @@ function applyMode() {
       onMoved: setMascotPosition,
       onDragStart: () => overlay.hide(),
     });
+    applyMascotCharacter();
   } else if (!wantMascot && mascot) {
     mascot.destroy();
     mascot = null;
   }
+}
+
+/** Shows the chosen character; "your own image" falls back to Mochi until an image is chosen. */
+async function applyMascotCharacter() {
+  if (!mascot) return;
+  const { mascot: id } = getSettings();
+  if (id === 'custom') {
+    const images = await loadCustomImages(getCustomMascot());
+    if (images.idle) return mascot?.setCharacter({ id: 'custom', images });
+  }
+  mascot?.setCharacter({ id: id === 'custom' ? 'mochi' : id });
+}
+
+/** Settings → Mascot → "Your own image…": pick one image, or idle / thinking / done. */
+async function chooseCustomMascotNow() {
+  overlay.suppressBlur = true; // the file dialog takes focus; keep the bar open behind it
+  try {
+    const res = await chooseCustomMascot(overlay.win);
+    if (!res.ok) return res;
+    const previous = getCustomMascot();
+    setCustomMascot(res.record);
+    await removeCustomFiles(previous, res.record);
+    if (getSettings().mascot === 'custom') await applyMascotCharacter();
+    return { ok: true, info: customMascotInfo(), preview: await customMascotPreview() };
+  } catch (err) {
+    return { ok: false, error: `Couldn't use that image: ${err.message}` };
+  } finally {
+    overlay.suppressBlur = false;
+    overlay.focus();
+  }
+}
+
+/** File names of your own mascot images, for the settings page. */
+function customMascotInfo() {
+  const record = getCustomMascot();
+  if (!record?.idle) return null;
+  return Object.fromEntries(Object.entries(record).map(([state, entry]) => [state, entry.original]));
+}
+
+async function customMascotPreview() {
+  return (await loadCustomImages(getCustomMascot())).idle || null;
 }
 
 function setMode(mode) {
@@ -241,6 +289,8 @@ function publicState() {
     providers: PROVIDERS,
     hotkeyLabels: HOTKEY_LABELS,
     hotkeyErrors,
+    mascots: MASCOTS,
+    customMascot: customMascotInfo(),
     encryptionAvailable: keyEncryptionAvailable(),
     isPackaged: app.isPackaged,
     version: app.getVersion(),
@@ -267,6 +317,7 @@ function saveSettings(patch) {
   }
   if (after.startOnLogin !== before.startOnLogin) applyLoginItem(after.startOnLogin);
   if (after.mode !== before.mode) applyMode();
+  else if (after.mascot !== before.mascot) applyMascotCharacter();
   tray.update();
 
   return { ok: errors.length === 0, errors, state: publicState() };

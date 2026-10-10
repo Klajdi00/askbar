@@ -44,6 +44,7 @@ export class Overlay {
     this.anchor = { top: 0 };
     this.growUp = false;
     this.dragTimer = null;
+    this.suppressBlur = false; // e.g. while a file dialog is open
 
     this.win = new BrowserWindow({
       width: WIDTH,
@@ -73,7 +74,7 @@ export class Overlay {
     this.win.loadFile(RENDERER_FILE);
 
     this.win.on('blur', () => {
-      if (this.win.webContents.isDevToolsOpened()) return;
+      if (this.win.webContents.isDevToolsOpened() || this.suppressBlur) return;
       if (this.shouldHideOnBlur()) this.hide();
     });
 
@@ -100,6 +101,11 @@ export class Overlay {
     this.win.focus();
     this.win.webContents.send('overlay:shown', { maxHeight: this.maxHeight, growUp: this.growUp, ...payload });
     this.onShow();
+  }
+
+  /** Gives focus back without re-running the "shown" logic (keeps the settings view open). */
+  focus() {
+    if (this.win.isVisible()) this.win.focus();
   }
 
   hide() {

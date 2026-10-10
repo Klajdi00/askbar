@@ -24,6 +24,8 @@ contextBridge.exposeInMainWorld('askbar', {
   // Settings
   getState: () => ipcRenderer.invoke('settings:get'),
   saveSettings: (patch) => ipcRenderer.invoke('settings:save', patch),
+  chooseCustomMascot: () => ipcRenderer.invoke('mascot:choose-custom'),
+  getCustomMascotPreview: () => ipcRenderer.invoke('mascot:custom-preview'),
 
   // Window
   onShown: (callback) => subscribe('overlay:shown', callback),

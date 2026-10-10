@@ -8,6 +8,11 @@ contextBridge.exposeInMainWorld('mascot', {
     ipcRenderer.on('mascot:state', listener);
     return () => ipcRenderer.removeListener('mascot:state', listener);
   },
+  onCharacter: (callback) => {
+    const listener = (_event, character) => callback(character);
+    ipcRenderer.on('mascot:character', listener);
+    return () => ipcRenderer.removeListener('mascot:character', listener);
+  },
   click: () => ipcRenderer.send('mascot:click'),
   lookAtScreen: () => ipcRenderer.send('mascot:look'),
   openMenu: () => ipcRenderer.send('mascot:menu'),
