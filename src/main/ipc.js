@@ -53,6 +53,10 @@ export function registerIpc({ overlay, app }) {
 
   ipcMain.handle('settings:get', (event) => (fromOverlay(event) ? app.publicState() : null));
 
+  ipcMain.on('hotkeys:suspend', (event, on) => {
+    if (fromOverlay(event)) app.suspendHotkeys(Boolean(on));
+  });
+
   ipcMain.handle('settings:save', (event, patch) => {
     if (!fromOverlay(event) || typeof patch !== 'object' || !patch) return { ok: false, errors: ['Invalid settings.'] };
     return app.saveSettings(patch);

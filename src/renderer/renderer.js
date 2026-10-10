@@ -442,10 +442,14 @@
       const input = document.createElement('input');
       input.readOnly = true;
       input.value = pretty(state.draft.hotkeys[name]) || 'None';
-      input.addEventListener('focus', () => input.classList.add('recording'));
+      input.addEventListener('focus', () => {
+        input.classList.add('recording');
+        api.suspendHotkeys(true);
+      });
       input.addEventListener('blur', () => {
         input.classList.remove('recording');
-        input.value = pretty(state.draft.hotkeys[name]) || 'None';
+        api.suspendHotkeys(false);
+        if (state.draft) input.value = pretty(state.draft.hotkeys[name]) || 'None';
       });
       input.addEventListener('keydown', (e) => recordHotkey(e, input, name));
       el.hotkeys.append(span(label), input);

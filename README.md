@@ -354,8 +354,7 @@ messages accepted only from the launcher window, with payloads validated.
   tested.
 - **Ctrl+Space may already be taken**, for example by input-method switching on Chinese or
   Japanese keyboard layouts. AskBar shows a notification if a shortcut can't be registered;
-  pick another one in Settings. A shortcut that AskBar itself currently uses can't be recorded
-  in the shortcut box (the global hotkey fires first).
+  pick another one in Settings (AskBar's own shortcuts pause while you record a new one).
 - **Unsigned builds** trigger SmartScreen, and some managed PCs block unsigned executables even
   in the portable form.
 - **Screen capture** uses the display under the mouse pointer. Protected content (DRM video,

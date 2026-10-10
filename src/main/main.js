@@ -98,8 +98,11 @@ function start() {
       onActivity: setActivity,
       chooseCustomMascot: chooseCustomMascotNow,
       customMascotPreview,
+      suspendHotkeys,
     },
   });
+  // Never leave the hotkeys paused if the bar closes while a shortcut box is focused.
+  overlay.win.on('hide', () => suspendHotkeys(false));
 
   registerMascotIpc({
     getMascot: () => mascot,
@@ -145,7 +148,21 @@ function start() {
 
 // ---------------------------------------------------------------------------
 
+/**
+ * Settings → Shortcuts: while a box is recording, AskBar's own global hotkeys
+ * are unregistered so the keys reach the box (otherwise pressing the current
+ * combination would trigger it instead of being recorded).
+ */
+let hotkeysSuspended = false;
+function suspendHotkeys(on) {
+  if (on === hotkeysSuspended) return;
+  hotkeysSuspended = on;
+  if (on) globalShortcut.unregisterAll();
+  else applyHotkeys();
+}
+
 function applyHotkeys({ notifyOnFailure = false } = {}) {
+  if (hotkeysSuspended) return; // re-applied when recording ends
   hotkeyErrors = registerHotkeys(getSettings().hotkeys, {
     toggle: () => overlay.toggle(),
     screen: () => askAboutScreen(),

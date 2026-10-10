@@ -24,6 +24,8 @@ contextBridge.exposeInMainWorld('askbar', {
   // Settings
   getState: () => ipcRenderer.invoke('settings:get'),
   saveSettings: (patch) => ipcRenderer.invoke('settings:save', patch),
+  // While a shortcut box records keys, AskBar's own global hotkeys are paused.
+  suspendHotkeys: (on) => ipcRenderer.send('hotkeys:suspend', Boolean(on)),
   chooseCustomMascot: () => ipcRenderer.invoke('mascot:choose-custom'),
   getCustomMascotPreview: () => ipcRenderer.invoke('mascot:custom-preview'),
 

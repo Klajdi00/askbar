@@ -1,7 +1,7 @@
 {
   "name": "askbar",
   "productName": "AskBar",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A Spotlight-style AI launcher for Windows. Ask Claude, OpenAI or Gemini with your own API key.",
   "license": "AGPL-3.0-only",
   "author": "Klajdi00",
